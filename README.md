@@ -31,6 +31,10 @@ pnpm build          # static site in dist/, to share read-only
 
 `pnpm plans` is the `plans` script in this folder's `package.json` (`node scripts/plans.ts`).
 
+**The roadmap** (`roadmap.mdx`, shown at `/roadmap`) is the order of work at a glance:
+phases of numbered steps that point at items, side-by-side steps, and gates where a person
+reviews before work goes on. `pnpm plans roadmap` prints it.
+
 **The sidebar** lists every item by stage. Filter by stage (closed stages start off) or by
 title and `#tag`, sort by priority, updated, created or title, and drag its edge to resize.
 Choices are remembered per browser.

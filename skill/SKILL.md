@@ -78,6 +78,40 @@ Rules that matter:
   MDX reads them as JSX.
 - Full examples of every component: `planning/examples/components.mdx`.
 
+## The roadmap
+
+`planning/roadmap.mdx` (beside `items/`, not in it) is the order of work at a glance, shown at
+`/roadmap`. Items are for drilling in; the roadmap is the sequence:
+
+```mdx
+# Roadmap
+
+<Phase id="now" title="Now" goal="Comments reach the editor">
+  <Step item="2026-10-14-planning-site" with="tests" />
+  <Together>
+    <Step item="3f2c9a1e-…">Only the read path.</Step>
+    <Step item="resource-kinds" />
+  </Together>
+  <Gate>Will tries it on a real project; iterate on feedback before Next.</Gate>
+</Phase>
+
+<Phase id="next" title="Next">
+  <Step>Write the migration guide.</Step>
+</Phase>
+```
+
+- `<Phase id title goal>` — a stage; its steps run in order, left to right.
+- `<Step item="…" with="tests, docs">` — an item by id, filename, or filename without its
+  date; it shows the item's live title, status, priority and open questions. Text inside says
+  what this step does with it. Without `item`, the text is the step.
+- `<Together>` — steps that run side by side.
+- `<Gate who="you">` — a checkpoint that is not a plan: a review, a feedback loop, a decision.
+- Steps are numbered across the whole roadmap, so "1, 3 and 5 first" means something.
+
+Keep it short and current: change the order by moving lines, mark progress in the items
+(status), not here. Active items the roadmap leaves out are listed under it. Do not invent
+an order — propose one, with a `<Question>` asking whether it is right.
+
 ## The CLI
 
 Run from `planning/` (or `pnpm --filter planning plans …` from the root):
@@ -86,7 +120,8 @@ Run from `planning/` (or `pnpm --filter planning plans …` from the root):
 pnpm plans open                 # every open question and follow-up, with file:line
 pnpm plans ls [--status s] [--kind k] [--tag t] [--all] [--sort priority|updated|created]
 pnpm -s plans json | jq '.[] | select(.status == "discussing") | .title'
-pnpm plans check                # frontmatter, ids, MDX parse — run after editing items
+pnpm plans roadmap              # the roadmap in the terminal, with each item's status
+pnpm plans check                # frontmatter, ids, MDX parse, roadmap references
 ```
 
 ## Working with it

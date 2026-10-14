@@ -4,7 +4,12 @@
  * live. This is the page to open first.
  */
 import Base from "../layouts/Base.astro";
+import { existsSync } from "node:fs";
+import { relative } from "node:path";
 import { loadItems } from "../lib/items.ts";
+import { parseFile } from "../lib/lift.ts";
+import { roadmapPath } from "../lib/roadmap.ts";
+import { repoRoot } from "../lib/root.ts";
 
 const items = (await loadItems()).filter((item) => !item.closed);
 // Most pressing item first (priority, then most recently touched); within an item, file order.
@@ -12,8 +17,21 @@ const rank = (p: number | undefined): number => p ?? Number.POSITIVE_INFINITY;
 const rows = items
   .toSorted((a, b) => rank(a.entry.data.priority) - rank(b.entry.data.priority))
   .flatMap((item) => item.lifted.filter((l) => l.open).map((lifted) => ({ item, lifted })));
-const questions = rows.filter((row) => row.lifted.kind === "Question");
-const followups = rows
+// The roadmap's own questions ("is this the order?") belong in the inbox too.
+const roadmap = roadmapPath();
+const roadmapRows = existsSync(roadmap)
+  ? parseFile(roadmap).lifted.filter((l) => l.open).map((lifted) => ({
+      item: { slug: "", path: relative(repoRoot, roadmap), href: "/roadmap", title: "Roadmap", priority: undefined as number | undefined },
+      lifted,
+    }))
+  : [];
+const view = (row: (typeof rows)[number]) => ({
+  item: { slug: row.item.slug, path: row.item.path, href: `/items/${row.item.slug}`, title: row.item.entry.data.title, priority: row.item.entry.data.priority },
+  lifted: row.lifted,
+});
+const all = [...roadmapRows, ...rows.map(view)];
+const questions = all.filter((row) => row.lifted.kind === "Question");
+const followups = all
   .filter((row) => row.lifted.kind === "Followup")
   .sort((a, b) => String(a.lifted.attrs["due"] ?? "9").localeCompare(String(b.lifted.attrs["due"] ?? "9")));
 const groups = [
@@ -41,14 +59,14 @@ const groups = [
       <ul class="space-y-2">
         {group.rows.map(({ item, lifted }) => (
           <li
-            data-ref={`${lifted.kind.toLowerCase()}:${item.slug}#${lifted.id ?? lifted.line}`}
+            data-ref={`${lifted.kind.toLowerCase()}:${item.slug || "roadmap"}#${lifted.id ?? lifted.line}`}
             data-loc={`${item.path}:${lifted.line}`}
             class="rounded-md border border-surface-border bg-surface-primary px-4 py-3"
           >
             <div>{lifted.text}</div>
             <div class="mt-1 flex flex-wrap gap-x-3 text-smallest text-on-surface-secondary">
-              {item.entry.data.priority !== undefined && <span class="font-mono">P{item.entry.data.priority}</span>}
-              <a href={`/items/${item.slug}`}>{item.entry.data.title}</a>
+              {item.priority !== undefined && <span class="font-mono">P{item.priority}</span>}
+              <a href={item.href}>{item.title}</a>
               {lifted.id && <span class="font-mono">{lifted.id}</span>}
               {lifted.attrs["due"] && <span>due {lifted.attrs["due"]}</span>}
               <span class="font-mono">{item.path}:{lifted.line}</span>

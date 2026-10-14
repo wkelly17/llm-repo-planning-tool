@@ -21,6 +21,7 @@
      graphs, trees) take the whole width. */
   .prose > :where(p, ul, ol, blockquote, h2, h3, h4, aside, [data-ref^="followup:"]) { max-inline-size: 75ch; }
   .prose > * + * { margin-block-start: 0.9em; }
+  .prose h1 { font-size: var(--text-h3); font-weight: 650; line-height: 1.2; }
   .prose h2 { font-size: var(--text-h4); font-weight: 650; margin-block-start: 2em; }
   .prose h3 { font-size: 1.1rem; font-weight: 650; margin-block-start: 1.6em; }
   .prose ul { list-style: disc; padding-inline-start: 1.4em; }
@@ -139,6 +140,38 @@
   .graph .ggroup[data-active] rect { stroke: var(--brand-base); }
   .graph .gedge[data-taken] path { stroke: var(--brand-base); stroke-width: 2; }
   .graph .gedge[data-taken] .gedge-label { fill: var(--brand-base); }
+
+  /* The roadmap: phases of numbered steps, left to right, arrows between. */
+  .roadmap-body { counter-reset: step; }
+  .roadmap-body > .roadmap-phase { max-inline-size: none; }
+  /* Centred, so a short gate does not stretch to a tall neighbour and the arrows sit mid-card. */
+  .roadmap-flow { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem 2rem; }
+  .roadmap-flow > :is(.roadmap-step, .roadmap-gate, .roadmap-together) { position: relative; }
+  .roadmap-flow > * + *::before {
+    content: "→"; position: absolute; inset-inline-start: -1.45rem; top: 50%;
+    transform: translateY(-50%); color: var(--on-surface-tertiary);
+  }
+  .roadmap-together {
+    display: flex; flex-direction: column; gap: 0.5rem; padding: 0.5rem;
+    border: var(--border-thin) dashed var(--surface-border); border-radius: var(--radius-lg);
+  }
+  .roadmap-step, .roadmap-gate {
+    inline-size: 16rem; padding: 0.6rem 0.8rem; border-radius: var(--radius-md);
+    border: var(--border-thin) solid var(--surface-border); background: var(--surface-primary);
+  }
+  .roadmap-step { counter-increment: step; border-inline-start-width: 4px; }
+  .roadmap-n::before { content: counter(step); font-family: var(--font-mono); font-size: var(--text-small); color: var(--on-surface-tertiary); }
+  .roadmap-gate { background: var(--brand-light); border-color: var(--brand-base); border-style: dashed; }
+  .roadmap-status { border-radius: var(--radius-full); padding: 0 0.45rem; background: var(--surface-tertiary); color: var(--on-surface-secondary); }
+
+  .roadmap-step[data-status="discussing"] { border-inline-start-color: var(--on-surface-warning); }
+  .roadmap-step[data-status="planned"] { border-inline-start-color: var(--brand-base); }
+  .roadmap-step[data-status="in-progress"] { border-inline-start-color: var(--brand-base); background: var(--brand-light); }
+  .roadmap-step[data-status="in-progress"] .roadmap-status { background: var(--brand-base); color: var(--on-surface-invert); }
+  .roadmap-step[data-status="done"] { border-inline-start-color: var(--on-surface-success); opacity: 0.75; }
+  .roadmap-step[data-status="done"] .roadmap-status { background: var(--surface-success); color: var(--on-surface-success); }
+  .roadmap-step:is([data-status="parked"], [data-status="dropped"]) { opacity: 0.55; }
+  .roadmap-step[data-status="missing"] { border-color: var(--on-surface-error); border-style: dashed; }
 
   .plans-select-chip {
     position: absolute;

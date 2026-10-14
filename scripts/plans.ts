@@ -5,7 +5,8 @@
  *   pnpm plans open                       open questions and follow-ups, with file:line
  *   pnpm plans json                       everything, for jq
  *   pnpm plans new "Title" [--kind idea] [--status idea] [--tag t] [--priority 1]
- *   pnpm plans check                      validate every item's frontmatter
+ *   pnpm plans roadmap                    the roadmap's phases and steps, with each item's status
+ *   pnpm plans check                      validate items, and the roadmap's references
  *
  *   pnpm -s plans json | jq '.[] | select(.status == "discussing") | .title'
  *   pnpm -s plans json | jq '[.[] | .lifted[] | select(.kind == "Question" and .open)] | length'
@@ -21,6 +22,7 @@ import { join, relative, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { parseFile } from "../src/lib/lift.ts";
 import { repoRoot as root } from "../src/lib/root.ts";
+import { readRoadmap, refersTo, roadmapPath } from "../src/lib/roadmap.ts";
 import { CLOSED, itemSchema, KINDS, STATUSES } from "../src/lib/schema.ts";
 
 const itemsDir = resolve(process.env["PLANS_ITEMS"] ?? "./items");
@@ -61,7 +63,37 @@ const { positionals, values } = parseArgs({
 });
 const [command = "ls", ...rest] = positionals;
 
+/** The loaded item a roadmap step names. */
+const resolveRef = (all: ReturnType<typeof load>, ref: string) =>
+  all.find((one) =>
+    refersTo(ref, { id: String(one.frontmatter["id"]), slug: one.file.split("/").pop()!.replace(/\.mdx$/u, "") }),
+  );
+
 switch (command) {
+  case "roadmap": {
+    const phases = readRoadmap();
+    if (phases === null) {
+      console.log(`No roadmap at ${relative(root, roadmapPath())}.`);
+      break;
+    }
+    const all = load();
+    for (const phase of phases) {
+      console.log(`\n${phase.title}${phase.goal ? ` — ${phase.goal}` : ""}`);
+      for (const step of phase.steps) {
+        const bar = step.group === null ? "  " : "  ‖ ";
+        if (step.kind === "Gate") {
+          console.log(`${bar}◆ ${step.text}`);
+          continue;
+        }
+        const one = step.item ? resolveRef(all, step.item) : undefined;
+        const f = one?.frontmatter ?? {};
+        const title = one ? String(f["title"]) : step.item ? `MISSING ${step.item}` : step.text;
+        const extras = step.extras.length > 0 ? `  + ${step.extras.join(", ")}` : "";
+        console.log(`${bar}${String(step.n).padStart(2)}. ${String(f["status"] ?? "").padEnd(12)} ${title}${extras}`);
+      }
+    }
+    break;
+  }
   case "json": {
     const out = load().map(({ path, frontmatter, lifted }) => ({ ...frontmatter, path, lifted }));
     console.log(JSON.stringify(out, null, 2));
@@ -91,7 +123,14 @@ switch (command) {
     break;
   }
   case "open": {
-    for (const { path, frontmatter: f, lifted } of load()) {
+    const roadmap = roadmapPath();
+    const sources = [
+      ...(existsSync(roadmap)
+        ? [{ path: relative(root, roadmap), frontmatter: { title: "Roadmap" } as Record<string, unknown>, lifted: parseFile(roadmap).lifted }]
+        : []),
+      ...load(),
+    ];
+    for (const { path, frontmatter: f, lifted } of sources) {
       if (CLOSED.includes(f["status"] as never)) continue;
       const open = lifted.filter((l) => l.open);
       if (open.length === 0) continue;
@@ -131,6 +170,17 @@ switch (command) {
           console.log(`✗ ${path}:${l.line}: two ${l.kind}s with id "${l.id}"`);
         }
         seen.add(key);
+      }
+    }
+    const phases = readRoadmap();
+    if (phases !== null) {
+      const all = load();
+      const where = relative(root, roadmapPath());
+      for (const step of phases.flatMap((p) => p.steps)) {
+        if (step.item !== null && resolveRef(all, step.item) === undefined) {
+          bad += 1;
+          console.log(`✗ ${where}:${step.line}: no item "${step.item}"`);
+        }
       }
     }
     console.log(bad === 0 ? "All items valid." : `${bad} problem(s).`);
